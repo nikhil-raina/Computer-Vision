@@ -5,7 +5,6 @@ CUTOFF_PERCENT  = 0.95;
     % Converts the image to a double to allow math to be done on it so that
     % the pixel values dont cause any hinderances.
     im_in  = im2double( imread( fn_in ) );
-    
     % if the image matrix is 3d then its green pixels goes through a filter 
     % a rotationally symmetric Gaussian lowpass filter of size [5 5] 
     % with standard deviation 1 and gets stored otherwise the
@@ -15,7 +14,6 @@ CUTOFF_PERCENT  = 0.95;
     else
         im_grn = im_in;
     end
-
     % filters the image through fltr, output array is the same size as
     % input array and input array values outside bounds of the array is
     % assumed to be equal to the nearest border array value
@@ -24,7 +22,6 @@ CUTOFF_PERCENT  = 0.95;
                         2 4 2 ;
                         1 2 1 ] / 16;
     im_grn          = imfilter( im_grn, fltr, 'same', 'repl' );
-     
     % Creates a Sobel Filter that is used to detect the horizontal and 
     % the vertical edges 
     %
