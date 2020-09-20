@@ -1,4 +1,4 @@
-function HW_04_Kaitlin_Raina_Edge_Stats_and_Display( fn_in, hw_part_number )
+function HW_04_Kimbrell_Caitlin_Raina_Nikhil_Edge_Stats_and_Display( fn_in, hw_part_number )
 MARGIN          = 20;
 CUTOFF_PERCENT  = 0.95;
     % Reads in the image when passed in to the function call.

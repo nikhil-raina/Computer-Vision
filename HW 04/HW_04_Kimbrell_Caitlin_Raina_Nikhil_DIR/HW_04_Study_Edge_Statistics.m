@@ -34,7 +34,7 @@ file_list_of_names = { ...
             % This is a function call of a custom method that displays
             % the statistics of the edges of the image that is being passed
             % to it.
-            HW_04_Kaitlin_Raina_Edge_Stats_and_Display( fn, hw_part_number );
+            HW_04_Kimbrell_Caitlin_Raina_Nikhil_Edge_Stats_and_Display( fn, hw_part_number );
 
             disp('pausing for four seconds...');
             pause(4);
