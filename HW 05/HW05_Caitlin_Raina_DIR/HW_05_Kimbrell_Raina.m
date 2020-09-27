@@ -1,5 +1,5 @@
 function HW_05_Kimbrell_Raina()
-    im = imread('TBK_relaxing_jaguar_wallpaper.jpg');
+    im = imread('ballet.jpg');
     dimensions = size(im);
     angle_size = 45;
     % checking if the image passed in is color or gray scale
@@ -50,10 +50,10 @@ function HW_05_Kimbrell_Raina()
     % set all points to 0 first
     seedpoints = zeros( size( im_mag ));
     
-    % set threshold to max of im_mag/1.2 to get bright edges
+    % set threshold to max of im_mag/3 to get bright edges
     threshold1 = max(max(im_mag))/3;
     
-    % set threshold to threshold1/6
+    % set threshold to threshold1/1.2
     threshold2 = threshold1/1.2;
     
     % Identifies all the strongest points in the magnified image
@@ -126,7 +126,7 @@ function HW_05_Kimbrell_Raina()
     imagesc(edge_map);
     axis image;
     colormap(gray(256));
-    imwrite(edge_map, 'TBK_relaxing_jaguar_wallpaper_canny_edge.jpg');
+    imwrite(edge_map, 'ballet_canny_edge.jpg');
 
 end
 
