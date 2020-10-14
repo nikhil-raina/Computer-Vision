@@ -1,4 +1,9 @@
 function HW07_Kimbrell_Raina_MAIN()
-
-    DEMO__GET_RASPBERY_COLORS_released_2201('ORANGE_TREES/Orange_Tree_Image_3293.JPG'); 
+    for idx = 3293:3343
+        file_name = strcat('ORANGE_TREES/Orange_Tree_Image_',int2str(idx),'.jpg');
+        if exist(file_name, 'file') ~= 0
+            DEMO__GET_RASPBERY_COLORS_released_2201(file_name);
+            pause(1)
+        end
+    end
 end
