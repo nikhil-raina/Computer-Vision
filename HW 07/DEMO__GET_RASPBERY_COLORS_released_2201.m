@@ -1,19 +1,20 @@
-function DEMO__GET_RASPBERY_COLORS_released_2201( fn )
+function DEMO__GET_RASPBERY_COLORS_released_2201( fn, training )
 %
 %  Look up the documentation of any functions you have not seen before.
 %
 
-%INTERACTIVE = 0;
+% interactive should equal 1 if we want the user to pick pixels
+INTERACTIVE = training;
 
-    fprintf('%% Look up the documentation of any functions you have not seen before.\n');
+    %fprintf('%% Look up the documentation of any functions you have not seen before.\n');
     
     if nargin < 1
         % This is a default filename.
         % It works for me, in my directory, but won't work for you...
         fn = 'IMG_0190__RASPBERRIES__small.jpg';
     end
-    % I DONT KNOW WHAT THIS IS FOR
- %   if  ( INTERACTIVE )
+    % if the image should be interactive we ask the user to pick pixels
+    if  ( INTERACTIVE )
         % reading in the image file that has been passed by the driver
         % function
         im_rgb = imread( fn );
@@ -24,8 +25,8 @@ function DEMO__GET_RASPBERY_COLORS_released_2201( fn )
         % necessary inputs for foreground and background
         figure('Position',[10 10 1024 768]);
         
-        % I DONT KNOW WHAT THIS IS FOR
-        %zoom_figure( [1200 800]);
+        % display rgb figure and fit the axes to the data
+        % zoom_figure( [1200 800]);
         imagesc( im_rgb );
         axis image;
 
@@ -43,11 +44,11 @@ function DEMO__GET_RASPBERY_COLORS_released_2201( fn )
         fprintf('Click on points to capture positions:  Hit return to end...\n');
         [x_bg, y_bg] = ginput();
 
-        % I DONT KNOW WHAT THIS IS FOR
+        % save the data got by user interaction
         save my_temporary_data;
-  %  else
-   %     load my_temporary_data;
-    %end
+    else
+        load my_temporary_data;
+    end
     
     % converts the RGB image to HSV image
     im_hsv      = rgb2hsv( im_rgb );
@@ -77,13 +78,13 @@ function DEMO__GET_RASPBERY_COLORS_released_2201( fn )
     % Plots the respective hue and value points
     figure('Position',[10 10 1024 768]);
     
-    % all the hue points of the foreground and the background while the 
-    % are plotted. They are marked with red squares
+    % all the hue points of the foreground and the background They are 
+    % marked with red squares
     plot( fg_hues, fg_values, 'rs', 'MarkerFaceColor', 'r', 'MarkerSize', 16  );
     hold on;
     
-    % all the value points of the foreground and the background while the 
-    % are plotted. They are marked with blue circles
+    % all the value points of the background are plotted. They are marked
+    % with blue circles
     plot( bg_hues, bg_values, 'bo', 'MarkerFaceColor', 'b', 'MarkerSize', 16  );
     xlabel( 'HUE ANGLE ', 'FontSize', 22 );
     ylabel( 'Value ', 'FontSize', 22 );
@@ -164,8 +165,9 @@ function DEMO__GET_RASPBERY_COLORS_released_2201( fn )
     im_ab       = [ im_a(:) im_b(:) ];
     
     %
-    %  Look up the documentation of any functions you have not seen before.
-    %
+    %  mahal will return the squared mahalanobis distance of each
+    %  obervation in param1 in reference with sambles in param2
+    %  to get true mahalanobis distance we must square root it
     mahal_fg    = ( mahal( im_ab, fg_ab ) ) .^ (1/2);
     mahal_bg    = ( mahal( im_ab, bg_ab ) ) .^ (1/2);
     
@@ -174,8 +176,6 @@ function DEMO__GET_RASPBERY_COLORS_released_2201( fn )
     %
     %  You will want to add a tolerance factor for your work to improve your accuracy.
     %  
-    %  I AM NOT SURE IF WE ARE SUPPOSED TO BE ADDING MORE CODE HERE TO
-    %  IMPROVE THE ACCURACY
     %  does classification between the oranges and the background. The
     %  foreground represent the oranges, which should be greater than the
     %  values that are in the background at those points. Thus, the
@@ -217,9 +217,6 @@ function DEMO__GET_RASPBERY_COLORS_released_2201( fn )
     % THE NAMING CONVENTION IS WRONG HERE. IT RETURNS IN A DIFFERENT ORDER
     % -> bins freqs
     % and not -> freqs bins
-    % I AM MAKINGNTHIS CHANGE IN THE LINES OF CODE TO REFLECT THIS. I THINK
-    % THAT THIS COULD BE MENTIONED IN THE REPORT AS WELL. BUT YOUR CALL IF
-    % WE SHOULD MAKE THE NAMING CONVENTION NAME CHANGE OR NOT.
     % 
     % returns the frequency and the bins from the histc() function call.
     [bins freqs]    = histc( fg_dists, edges );
