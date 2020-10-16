@@ -1,10 +1,10 @@
 im = imread('Images__Hello_World/IMG_3997.JPG');
 
 % convert the image to grayscale
-im = rgb2gray(im); 
+gray = rgb2gray(im); 
 
 % binarize the image with a threshold of .6
-bw = imbinarize(im,.6);
+bw = imbinarize(gray,.6);
 
 % create the strel object to use close on its a rectangle because paper is
 % rectangle
@@ -15,8 +15,9 @@ bw = imclose(bw, SE);
 
 % detect the harrisfeatures of the new processed image
 points = detectHarrisFeatures(bw);
-
-imshow(bw); 
+% get the strongest 1000 points
+strongpoints = points.selectStrongest(1000);
+imshow(im); 
 hold on;
-% show the strongest 100 points.
-plot(points.selectStrongest(100));
+% show the strongest 1000 points.
+plot(strongpoints);
