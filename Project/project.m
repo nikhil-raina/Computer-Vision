@@ -1,9 +1,9 @@
 function project(file_name)
-    im = imread(file_name);
-    %im = imread('PROJ_IMAGES/SCAN0124.jpg');
+    %im = imread(file_name);
+    im = imread('PROJ_IMAGES/SCAN0124.jpg');
     im = orientimage(im);
     imshow(im);
-    figure
+    ocr = getOcr(im);
     im_gray = rgb2gray(im);
     SE_circle = strel('disk', 2, 4);
 
@@ -83,7 +83,7 @@ function oriented_im = orientimage(im)
     roi = getWordRectangles(im);
     angle = roi.Orientation;
     oriented_im = imrotate(im, -angle);
-    roi = getWordRectangles(oriented_im)
+    roi = getWordRectangles(oriented_im);
     oriented_im = cropImage(oriented_im, roi);
 end 
 
@@ -98,9 +98,9 @@ function word_rectangles = getWordRectangles(im)
     %filter to smooth the image
     fltr = fspecial('gauss', [15 15], 1.4);
     im = imfilter(im_gray, fltr, 'same', 'repl');
-    figure;
-    imshow(im)
-    pause(2)
+    %figure;
+    %imshow(im)
+    %pause(2)
 
     % binarizing the image by making the threshold at 0.6
     % this means that all the double values of the cells that are below 0.6
@@ -123,13 +123,13 @@ function word_rectangles = getWordRectangles(im)
             roi = [roi ; rectangles(index)];
         end
     end
-    imshow(bw)
+    %imshow(bw)
     % set minimum and maximum x' and y's to inital value
     minx = roi(1).BoundingBox(1);
     miny = roi(1).BoundingBox(2);
     maxx = roi(1).BoundingBox(1);
     maxy = roi(1).BoundingBox(2);
-    hold on;
+    %hold on;
     % draw boxes while finding the minimum and maximum of x's and y's
     for index = 1 : numel(roi)
        bb = roi(index).BoundingBox;
@@ -143,7 +143,7 @@ function word_rectangles = getWordRectangles(im)
        elseif bb(2)+bb(4) > maxy
            maxy = bb(2)+bb(4);
        end
-       rectangle('position',bb,'edgecolor','g','linewidth',1);
+       %rectangle('position',bb,'edgecolor','g','linewidth',1);
     end
     word_rectangles = roi;
 end
@@ -173,14 +173,14 @@ function cropped_image = cropImage(im, roi)
     cropped_image = imcrop(im, [minx-100 miny-100 maxx-minx+400 maxy-miny+400]);
 end 
 
-
-% DOES NOT WORK :(
-function ocrResults = getOcr(im)
+% pre processes the image
+function preprocess_im = preprocess(im)
     im_gray = rgb2gray(im2double( im ));
 
     %filter to smooth the image
     fltr = fspecial('gauss', [15 15], 1.4);
     im = imfilter(im_gray, fltr, 'same', 'repl');
+    figure;
     imshow(im)
     pause(2)
 
@@ -193,28 +193,40 @@ function ocrResults = getOcr(im)
     % clear the image more so that only the Jumble Puzzle is visible. This
     % way, some random structures dont become shapes, when thats not
     % required
-    cleaned_image = bwareaopen(bw, 1000);
+    %cleaned_image = bwareaopen(bw, 1000);
+    marker = imerode(im, strel('line',10,0));
+    clean = imreconstruct(marker, im);
 
-    % gets all the 'rectangles' in the image along with their perimeters and
-    % areas. These will be sued as differentiating purposes from areas of
-    % other unwanted rectangles.
-    rectangles = regionprops(cleaned_image,'boundingbox', 'Perimeter', 'Area','Orientation', 'MajorAxisLength', 'MinorAxisLength');
-    roi = [];
-    for index = 1 : numel(rectangles)
-        if rectangles(index).MajorAxisLength > 1.5 * rectangles(index).MinorAxisLength && rectangles(index).Area > 4500 && rectangles(index).Area < 27000
-            roi = [roi ; rectangles(index).BoundingBox];
-        end
-    end
-    imshow(bw)
+    bw2 = imbinarize(clean);
+    preprocess_im = bw;
+end
+% doesnt work correctly, but finds some text
+function ocrResults = getOcr(im)
+    % prerocess the image
+    bw = preprocess(im);
+    imshow(bw);
     hold on;
-    for index = 1 : numel(roi)
-        if rectangles(index).MajorAxisLength > 1.5 * rectangles(index).MinorAxisLength && rectangles(index).Area > 4500 && rectangles(index).Area < 27000
-            bb = rectangles(index).BoundingBox;
-            rectangle('position',bb,'edgecolor','g','linewidth',1);
-        end
+    % get the word rectangles
+    roi = getWordRectangles(im);    
+     for index = 1 : numel(roi)
+       bb = roi(index).BoundingBox;
+       rectangle('position',bb,'edgecolor','g','linewidth',1);
+     end
+     % get the boudning boxes
+    boxes = vertcat(roi(:).BoundingBox);
+    
+    % perform ocr on the preprocessed image using the found bounding boxes
+    results = ocr(bw, boxes, 'TextLayout', 'Word', 'CharacterSet', 'A':'Z');
+    figure;
+    % remove whitespace in the results
+    c = cell(1,numel(results));
+    for i = 1:numel(results)
+        c{i} = deblank(results(i).Text);
     end
-    pause(2)
-    ocrResults = ocr(bw, roi, 'TextLayout', 'Word');
+    ocrResults = c;
+    % display results on the iamge
+    Iname = insertObjectAnnotation(im,'rectangle',boxes,c);
+    imshow(Iname);
 end
 
 % returns false if any of the arrays in the array are empty
