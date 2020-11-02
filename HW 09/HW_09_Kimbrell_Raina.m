@@ -10,5 +10,14 @@ for col = 257:512
     end
 end
 
+fourier = fft2(im);     % get the fourier transform of the matrix
+shift = fftshift(fourier)  % use ffshift w/ fourier 
+
+threshold = 20;       % the threshold for pixels
+
+
+imagesc(im);
+figure;
+imagesc(abs(shift));
 
 
