@@ -27,8 +27,34 @@ function HW_09_Kimbrell_Raina
     % calls low pass filtering
     pass_filtering(im_gray, RADIUS, 0);
     
+    % calls the FFT Judo method
+    fft_judo(im_gray);
+    
 end
 
+
+function fft_judo(im_gray)
+    % finds the fourier transformation of the image
+    im_fft2 = fft2(im_gray);
+    im_fft2_shift = fftshift(im_fft2);
+    
+    % gets the size and column of the image
+    [row, column] = size(im_gray);
+    
+    % creates the padded image
+    im_fft2_shift_bigger = padarray(im_fft2_shift, [round(row/2) ...
+                                            round(column/2)], 0, 'both');
+    
+    % transforms the iamge back to display the result
+    im_ifft2 = ifft2(fftshift(im_fft2_shift_bigger));
+    
+    im_to_show = abs(im_ifft2);
+    
+    figure('Position', [10 200 1024 768]);
+    imagesc(im_to_show);
+    colormap('gray');
+    imwrite(im_to_show, 'FFT-Judo-result.png');
+end
 
 function convolution(im_gray, original_row, original_column)
     % the ear pattern in the gray image
@@ -145,7 +171,6 @@ function inside_fft(im, D)
     fourier_transformation = ifft2(shift); 
     imagesc(fourier_transformation);
     title('Inside +/- D Pixels');
-    %fourier_transformation = fourier_transformation + 0.5;
 end
 
 
