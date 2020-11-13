@@ -1,4 +1,5 @@
 function im_final_clean = preprocess(im)
+    %im = imread(im);
     im = imread('PROJ_IMAGES/SCAN0125.jpg');
     [row, column, channel] = size(im);
     flag_more_jumble_words = 0;
@@ -12,7 +13,7 @@ function im_final_clean = preprocess(im)
     jumble_word_list = [0 0 0 0 0];
     % Loop that constantly rotates the image till it finds the word jumble
     % and returns it back to the caller.
-    for degree = 0:2:360
+    for degree = 0:15:360
         %break;
         % Cleans the image to ensure that the word JUMBLE is easily read
         im_clean = clear_for_jumble(im_gray_double);
@@ -38,7 +39,7 @@ function im_final_clean = preprocess(im)
         % [x y height width]
         jumble_words = locateText(ocrText, 'Jumble');
         
-        disp(degree);
+         disp(degree);
         
         % checks if the jumble_words is empty. If it is, then it rotates
         % the image and tries the previous steps again otherwise it gets
@@ -46,10 +47,10 @@ function im_final_clean = preprocess(im)
         if(~isempty(jumble_words))
             disp('fly');
             % inserts a yellow rectangle on the found jumble word
-            %Iocr = insertShape(im_rotate_gray, 'FilledRectangle', jumble_words);
+            Iocr = insertShape(im_rotate_gray, 'FilledRectangle', jumble_words);
             
             % shows the figure with the highlighted jumble word
-            %figure; imshow(Iocr); figure;
+            figure; imshow(Iocr); figure;
             
             % stores the degree value along with the located texts in order
             % to be able to create a new image to crop out the required
@@ -96,6 +97,7 @@ function im_final_clean = preprocess(im)
     % cropped image
     im_rotate_original = imrotate(im, jumble_words(5)+2);
     
+    im_rotate_original = straighten(im);
     % cropping the jumble puzzle from the image
     im_crop_small = imcrop(im_rotate_gray, im_small_coordinates);
     im_crop_original = rgb2gray(imcrop(im_rotate_original, im_coordinates));
@@ -135,6 +137,43 @@ function coordinates = get_coordinates(im, jumble_word)
     coordinates = [top_left_x-(width*2) top_left_y+round(width*2.7) length+round(width*3.5) round(length*3.1)];
 end
 
+function straight = straighten(im)
+    % preproces img
+    im_gray = rgb2gray(im2double( im ));
+    bw = imbinarize(im_gray,.6);
+    % detect edges / prewitt
+    BW = edge(bw,'prewitt');
+    % use hough transform.
+    [angle, T, ~] = hough(BW,'Theta',-90:90-1);
+    % get variance at angles 
+    variances = var(angle);                      
+    % assume right angles
+    fold = floor(90);         % assume right angles 
+    % fold data
+    variances = variances(1:fold) + variances(end-fold+1:end); % fold data
+    [row, col] = max(variances);          % get the column w max variances
+    angle = -T(col);               % convert column to degrees 
+    angle = mod(45+angle,90)-45;
+    straight = imrotate(im, -angle);
+    imshow(straight)
+    pause(20);
+%     lttrs = [ 'l', 't', 'T', 'L'];
+%     location = locateText(ocrText, 'Jumble');
+%     lttr_crop = imcrop(im,[location(1), location(2), location(3), location(4)]);
+%     crop_BW = edge(lttr_crop,'canny');
+%     imshow(crop_BW);
+%     for index = 1:1:numel(lttrs)
+%         disp(lttrs(index));
+%         location = locateText(ocrText, 'l');
+%         if(~isempty(location))
+%             lttr_crop = imcrop(im,[location(1), location(2), location(3), location(4)]);
+%             crop_BW = edge(lttr_crop,'canny');
+%             imshow(crop_BW);
+%         end
+%         pause(10);
+%     end
+%     straight = im;
+end
 function add_pepper(im)
 
 end
