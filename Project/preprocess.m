@@ -1,146 +1,85 @@
 function im_final_clean = preprocess(im)
     %im = imread(im);
-    im = imread('PROJ_IMAGES/SCAN0125.jpg');
-    [row, column, channel] = size(im);
-    flag_more_jumble_words = 0;
-    % resizez the image to allow the cleaning and character recognition to
-    % take place smoothly. This further improves the computation speed
-    im_resize = imresize(im, [row/3 column/3]);
-    im_gray = rgb2gray(im_resize);
-    im_gray_double = rgb2gray(im2double(im_resize));
+    im = imread('PROJ_IMAGES/SCAN0124.jpg');
+    im_gray = rgb2gray(im);
+    im_straight = straighten(im_gray);
+    im_straight = imresize(im_straight, [3424 1696]);
+    [row, column, channel] = size(im_straight);
+
+    % 3424, 1696
+    im_double = im2double( im_straight );
+    im_gray_resize = imresize(im_double, [row/3 column/3]);
+    im_original_resize= imresize(im_straight, [row/3 column/3]);
+    % [1920 1680]
     
     
-    jumble_word_list = [0 0 0 0 0];
-    % Loop that constantly rotates the image till it finds the word jumble
-    % and returns it back to the caller.
-    for degree = 0:15:360
-        %break;
-        % Cleans the image to ensure that the word JUMBLE is easily read
-        im_clean = clear_for_jumble(im_gray_double);
-        
-        % constantly goes about rotating the image till the image is
-        % roughly upright. This will later be used to identify the circles
-        % and squares
-        im_rotate_clean = imrotate(im_clean, degree);
-        
-        % Matches the rotation of the clean image to insert the image in
-        % the InsertShape Method.
-        im_rotate_gray = imrotate(im_gray, degree);
-        
-        % Grabs all the recognizable characters from the cleaned iamge
-        ocrText = ocr(im_rotate_clean);
-        
-        % shows the current image position
-        %imshow(im_rotate_clean);
-        %imshow(im_rotate_gray);
-        
-        % Locates the jumble words and returns the coordinates of it
-        % with the height and width of the word.
-        % [x y height width]
-        jumble_words = locateText(ocrText, 'Jumble');
-        
-         disp(degree);
-        
-        % checks if the jumble_words is empty. If it is, then it rotates
-        % the image and tries the previous steps again otherwise it gets
-        % displays the positions of the words correctly
-        if(~isempty(jumble_words))
-            disp('fly');
-            % inserts a yellow rectangle on the found jumble word
-            Iocr = insertShape(im_rotate_gray, 'FilledRectangle', jumble_words);
-            
-            % shows the figure with the highlighted jumble word
-            figure; imshow(Iocr); figure;
-            
-            % stores the degree value along with the located texts in order
-            % to be able to create a new image to crop out the required
-            % jumble puzzle
-            jumble_words(5) = degree;
-            
-            % stores the captured jumble word details and the degree in the
-            % list
-            jumble_words = jumble_words(1,:);
-            jumble_word_list = cat(1, jumble_word_list, jumble_words);
-            
-            % somehow, I could try to reduce the time for this.
-            
-            % temporary size of the jumble word list
-            temp_size = size(jumble_word_list);
-            % assuming that there are 3 mathces a minimum, 
-            if(temp_size(1) >= 4)
-                flag_more_jumble_words = 1;
-                jumble_words = jumble_word_list(3,:);
-                
-                % calls the crop image on the new cleaned image and the
-                % jumble word that was chosen. The assumption here is that
-                % the word chosen is the upright one for the image.
-                im_small_coordinates = get_coordinates(im_rotate_gray, jumble_words);
-                break;
-            end
-        end
-        %pause(2);
-    end
+    im_binarize = imbinarize(im_gray_resize, 0.72);
+    im_clean = bwareaopen(im_binarize, 5);
+    %im_resize = imresize(cleaned_image, [row/3 column/3]);
+    %im_resize_original = imresize(im_straight, [row/3 column/3]);
     
-    if(~flag_more_jumble_words)
-        if(size(jumble_word_list) >= 2)
-            jumble_words = jumble_word_list(2,:);
-            im_rotate_gray = imrotate(im_gray, jumble_words(5));
-            im_small_coordinates = get_coordinates(im_rotate_gray, jumble_words);
-        else
-            disp('There is no Jumble Puzzle');
+    for degree = 0:90:360
+        im_display = imrotate(im_original_resize, degree);
+        im_rotate = imrotate(im_clean, degree);
+        all_text = ocr(im_rotate);
+        jumble_text = locateText(all_text, 'Jumble');
+        if(~isempty(jumble_text))
+            break;
         end
     end
     
-    % resizing to the original points in the image
-    im_coordinates = (im_small_coordinates * 3);
-    % rotating the original image to match the orientation of the small
-    % cropped image
-    im_rotate_original = imrotate(im, jumble_words(5)+2);
+    Iocr = insertShape(im_display, 'FilledRectangle', jumble_text);
+    figure; imshow(Iocr);
     
-    im_rotate_original = straighten(im);
-    % cropping the jumble puzzle from the image
-    im_crop_small = imcrop(im_rotate_gray, im_small_coordinates);
-    im_crop_original = rgb2gray(imcrop(im_rotate_original, im_coordinates));
+    scale_jumble_text = jumble_text * 3;
     
-    imshow(im_crop_small);
-    figure();
-    imshow(im_crop_original);
-    im_final_clean = clear_for_jumble(im_crop_original);
-    figure();
-    imshow(im_final_clean);
+    % Checking if the coordinates are relatively correct by scaling to the
+    % original size of the image
+    Iocr = insertShape(im_straight, 'FilledRectangle', scale_jumble_text);
+    figure; imshow(Iocr);
     
-    textStuff = ocr(im_final_clean);
-    %text(600, 150, textStuff.Text, [1 1 1]);
     
-    %close all;
+    % shifting a little left
+    column_start = scale_jumble_text(1)-20;
+    
+    % shifting to the right till it contains the entire puzzle and then a
+    % little more
+    column_end = scale_jumble_text(3)+180;
+    
+    % shifting to the bottom till the start of the puzzle
+    row_start = scale_jumble_text(2)+170;
+    
+    % shifting all the way to the bottom till the puzzle limit
+    row_end = scale_jumble_text(4)+800;
+    
+    % creating the puzzle by cropping from the original image.
+    im_puzzle = imcrop(im_double, [column_start row_start ...
+                                     column_end row_end]);
+
+    imshow(im_puzzle);
+    
+    % binarinzing the image
+    im_bw_puzzle = imbinarize(im_puzzle, 0.55);
+
+    % removing the small letters by coloring small gaps in them black. This
+    % is to avoid them showing up in the OCR.
+    im_clean_puzzle = bwareaopen(im_bw_puzzle, 60);
+    
+    % Remove the entire section rows with the circles and squares. That
+    % way, the program would only need to identify the text and nothing but
+    % the text.
+    
+    
+    % Runs the OCR of the formatted puzzle now. 
+    puzzle_text = ocr(im_clean_puzzle);
+    
     
 end
 
-function cleaned_image = clear_for_jumble(im_gray)
-    
-    % binarises the image to remove any additional noise
-    bw = imbinarize(im_gray, .7);
-    
-    % removes the small gaps of white spaces to remove the redundant words
-    % away and additional jumble words.
-    cleaned_image = bwareaopen(bw, 5);
-end
 
-function coordinates = get_coordinates(im, jumble_word)
-    top_left_x = jumble_word(1);
-    top_left_y = jumble_word(2);
-    length = jumble_word(3);
-    width = jumble_word(4);
-    
-    % this is not working correctly yet. Still requires some work into it with
-    % the math of the coordinates.
-    coordinates = [top_left_x-(width*2) top_left_y+round(width*2.7) length+round(width*3.5) round(length*3.1)];
-end
-
-function straight = straighten(im)
+function straight = straighten(im_gray)
     % preproces img
-    im_gray = rgb2gray(im2double( im ));
-    bw = imbinarize(im_gray,.6);
+    bw = imbinarize(im_gray,.7);
     % detect edges / prewitt
     BW = edge(bw,'prewitt');
     % use hough transform.
@@ -154,9 +93,9 @@ function straight = straighten(im)
     [row, col] = max(variances);          % get the column w max variances
     angle = -T(col);               % convert column to degrees 
     angle = mod(45+angle,90)-45;
-    straight = imrotate(im, -angle);
-    imshow(straight)
-    pause(20);
+    straight = imrotate(im_gray, -angle);
+    %imshow(straight)
+    %pause(10);
 %     lttrs = [ 'l', 't', 'T', 'L'];
 %     location = locateText(ocrText, 'Jumble');
 %     lttr_crop = imcrop(im,[location(1), location(2), location(3), location(4)]);
@@ -173,13 +112,4 @@ function straight = straighten(im)
 %         pause(10);
 %     end
 %     straight = im;
-end
-function add_pepper(im)
-
-end
-
-function im_resized = resize_fltr_im(im_crop)
-    fltr = fspecial('gauss', [15 15], 0.8);
-    im_resized = imfilter(im_crop, fltr, 'same', 'repl');
-    
 end
