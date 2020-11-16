@@ -71,10 +71,72 @@ function im_final_clean = preprocess(im)
     
     
     % Runs the OCR of the formatted puzzle now. 
-    puzzle_text = ocr(im_clean_puzzle);
+    puzzle_text = getOcr(im_clean_puzzle, im_puzzle);
     
     
 end
+
+function word_rectangles = getWordRectangles(im)
+    % gets all the 'rectangles' in the image along with their perimeters and
+    % areas. These will be sued as differentiating purposes from areas of
+    % other unwanted rectangles.
+    rectangles = regionprops(im,'boundingbox', 'Perimeter', 'Area','Orientation', 'MajorAxisLength', 'MinorAxisLength');
+    roi = [];
+    for index = 1 : numel(rectangles)
+        if rectangles(index).MajorAxisLength > 1.5 * rectangles(index).MinorAxisLength && rectangles(index).Area > 4500 && rectangles(index).Area < 27000
+            roi = [roi ; rectangles(index)];
+        end
+    end
+    curated_roi = [];
+    x_value = roi(1).BoundingBox(1);    % this is the x value in which all word rectangles should start at
+    delta = 5;  % amt of pixels the starting word rectangles can be off by
+    % this finds all the actual word rectangles on the page, they should
+    % all be stacked near eachother in the same column
+    for index = 1 : numel(roi)
+        if roi(index).BoundingBox(1) < x_value + delta && roi(index).BoundingBox(1) > x_value - delta
+            curated_roi = [curated_roi ; roi(index)];
+        end
+    end
+
+    word_rectangles = curated_roi;
+end
+
+function [words, boxes] = getOcr(im, im_original)
+    % get the word rectangles
+    roi = getWordRectangles(im); 
+    % show the word rectangles found
+     for index = 1 : numel(roi)
+       bb = roi(index).BoundingBox;
+       rectangle('position',bb,'edgecolor','g','linewidth',1);
+     end
+     % get the bounding boxes of the word rectangles
+    boxes = vertcat(roi(:).BoundingBox);
+    % initialize the words array
+    words = [];
+    % delta offset array to remove outlines
+    delta = [5 5 -10 -10]
+    % this gets the word for each word rectangle
+    for index = 1:numel(boxes(:,1))
+        % get the location of word rectangle and use delta to remove edges
+        bbox = boxes(index, :) + delta;
+        % crop image to the word rectangle
+        Icropped = imcrop(im,bbox);
+        % perform ocr on the cropped image
+        results = ocr(Icropped,'TextLayout','Block', 'CharacterSet', 'A':'Z');
+        % turn the char array to a string
+        text = convertCharsToStrings(deblank(results.Text))
+        % if it cant find anything put a questionmark
+        if numel(text) == 0
+            text = '?';
+        end
+        % add new words to the word array
+        words = [words ; text];
+    end
+    % label the words found
+    Iname = insertObjectAnnotation(im_original,'rectangle',boxes,words);
+    imshow(Iname);
+end
+
 
 
 function straight = straighten(im_gray)
@@ -92,24 +154,6 @@ function straight = straighten(im_gray)
     variances = variances(1:fold) + variances(end-fold+1:end); % fold data
     [row, col] = max(variances);          % get the column w max variances
     angle = -T(col);               % convert column to degrees 
-    angle = mod(45+angle,90)-45;
-    straight = imrotate(im_gray, -angle);
-    %imshow(straight)
-    %pause(10);
-%     lttrs = [ 'l', 't', 'T', 'L'];
-%     location = locateText(ocrText, 'Jumble');
-%     lttr_crop = imcrop(im,[location(1), location(2), location(3), location(4)]);
-%     crop_BW = edge(lttr_crop,'canny');
-%     imshow(crop_BW);
-%     for index = 1:1:numel(lttrs)
-%         disp(lttrs(index));
-%         location = locateText(ocrText, 'l');
-%         if(~isempty(location))
-%             lttr_crop = imcrop(im,[location(1), location(2), location(3), location(4)]);
-%             crop_BW = edge(lttr_crop,'canny');
-%             imshow(crop_BW);
-%         end
-%         pause(10);
-%     end
-%     straight = im;
+    angle = mod(45+angle,90)-45; 
+    straight = imrotate(im_gray, -angle);   % return the straightened image
 end
