@@ -8,8 +8,8 @@ function project(file_name)
     % 2: boxes list
     % 3: cropped puzzle image in gray
     [word_list, box_list, im_puzzle] = preprocess(im);
-    
-    Iname = insertObjectAnnotation(im_puzzle,'rectangle', box_list, word_list);
+    dejumble_words = dejumble(word_list);
+    Iname = insertObjectAnnotation(im_puzzle,'rectangle', box_list, dejumble_words);
     imshow(Iname);
     
     %filter to smooth the image
