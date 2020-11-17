@@ -1,6 +1,7 @@
 function [words, boxes, im_cropped_puzzle] = preprocess(im)
     %im = imread('PROJ_IMAGES/SCAN0128.jpg');
     im_gray = rgb2gray(im);
+    disp('Straightening the image');
     im_straight = straighten(im_gray);
     im_straight_resize = imresize(im_straight, 0.75);
     im_double = im2double(im_straight_resize);
@@ -17,12 +18,14 @@ function [words, boxes, im_cropped_puzzle] = preprocess(im)
         all_text = ocr(im_rotate);
         text_location = locateText(all_text, 'SCRAMBLED');
         if(~isempty(text_location))
+            disp('Found Scrambled identifier');
             puzzle_adjustment = [-500 0 300 800];
             break;
         else 
             
             text_location = locateText(all_text, 'GAME');
             if(~isempty(text_location))
+                disp('Found Game identifier');
                 puzzle_adjustment = [-700 0 +350 +800];
                 break;
             else 
@@ -46,6 +49,7 @@ function [words, boxes, im_cropped_puzzle] = preprocess(im)
                     % additional addition of numbers has been done to
                     % reduce the error of scaling from small to big.
                     text_location = (text_location + [-2 0 3 0])/0.3;
+                    disp('Found Jumble identifier');
                     puzzle_adjustment = [-20 0 170 800];
                     break;
                 end
@@ -59,6 +63,7 @@ function [words, boxes, im_cropped_puzzle] = preprocess(im)
     text_location = text_location + puzzle_adjustment;
     
     % cropping the puzzle from the original image.
+    disp('Cropping out the puzzle');
     im_puzzle = imcrop(im_display, text_location);
 
     imshow(im_puzzle);
@@ -70,6 +75,7 @@ function [words, boxes, im_cropped_puzzle] = preprocess(im)
     % is to avoid them showing up in the OCR.
     im_clean_puzzle = bwareaopen(im_bw_puzzle, 40);
     
+    disp('Finding the jumbled words');
     % Runs the OCR of the formatted puzzle now. 
     [words, boxes] = getOcr(im_clean_puzzle);
     im_cropped_puzzle = im_puzzle;
