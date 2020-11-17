@@ -1,84 +1,102 @@
-function im_final_clean = preprocess(im)
-    %im = imread(im);
-    im = imread('PROJ_IMAGES/SCAN0124.jpg');
+function [words, boxes, im_cropped_puzzle] = preprocess(im)
+    %im = imread('PROJ_IMAGES/SCAN0128.jpg');
     im_gray = rgb2gray(im);
     im_straight = straighten(im_gray);
-    im_straight = imresize(im_straight, [3424 1696]);
-    [row, column, channel] = size(im_straight);
-
-    % 3424, 1696
-    im_double = im2double( im_straight );
-    im_gray_resize = imresize(im_double, [row/3 column/3]);
-    im_original_resize= imresize(im_straight, [row/3 column/3]);
-    % [1920 1680]
+    im_straight_resize = imresize(im_straight, 0.75);
+    im_double = im2double(im_straight_resize);
     
+    im_clean = imbinarize(im_double, 0.7);
     
-    im_binarize = imbinarize(im_gray_resize, 0.72);
-    im_clean = bwareaopen(im_binarize, 5);
-    %im_resize = imresize(cleaned_image, [row/3 column/3]);
-    %im_resize_original = imresize(im_straight, [row/3 column/3]);
+    % default puzzle adjustment segmentation depending on which text gets
+    % located.
+    puzzle_adjustment = [];
     
     for degree = 0:90:360
-        im_display = imrotate(im_original_resize, degree);
+        im_display = imrotate(im_straight_resize, degree);
         im_rotate = imrotate(im_clean, degree);
         all_text = ocr(im_rotate);
-        jumble_text = locateText(all_text, 'Jumble');
-        if(~isempty(jumble_text))
+        text_location = locateText(all_text, 'SCRAMBLED');
+        if(~isempty(text_location))
+            puzzle_adjustment = [-500 0 300 800];
             break;
+        else 
+            
+            text_location = locateText(all_text, 'GAME');
+            if(~isempty(text_location))
+                puzzle_adjustment = [-700 0 +350 +800];
+                break;
+            else 
+                % this is specifically being done for jumble as the OCR is
+                % not able to read the actual jumble heading and instead
+                % finds the other jumbles. This can cause some level of
+                % incoherence with the algorithm. Thus the image is being
+                % reduced more for it to see the correct jumble word
+                im_smaller_rotate = imresize(im_rotate, 0.3);
+                all_text = ocr(im_smaller_rotate);
+                text_location = locateText(all_text, 'Jumble');
+                if(~isempty(text_location))
+                    [row_number, c] = size(text_location);
+                    if(row_number > 1)
+                        text_location = greatest_jumble(text_location); 
+                    end
+                    
+                    % scaling back the text to the original 0.75 resized
+                    % version by just simply revering the previous
+                    % resizing. 
+                    % additional addition of numbers has been done to
+                    % reduce the error of scaling from small to big.
+                    text_location = (text_location + [-2 0 3 0])/0.3;
+                    puzzle_adjustment = [-20 0 170 800];
+                    break;
+                end
+            end
         end
     end
     
-    Iocr = insertShape(im_display, 'FilledRectangle', jumble_text);
-    figure; imshow(Iocr);
+    %Iocr = insertShape(im_display, 'FilledRectangle', text_location);
+    %figure; imshow(Iocr);
     
-    scale_jumble_text = jumble_text * 3;
+    text_location = text_location + puzzle_adjustment;
     
-    % Checking if the coordinates are relatively correct by scaling to the
-    % original size of the image
-    Iocr = insertShape(im_straight, 'FilledRectangle', scale_jumble_text);
-    figure; imshow(Iocr);
-    
-    
-    % shifting a little left
-    column_start = scale_jumble_text(1)-20;
-    
-    % shifting to the right till it contains the entire puzzle and then a
-    % little more
-    column_end = scale_jumble_text(3)+180;
-    
-    % shifting to the bottom till the start of the puzzle
-    row_start = scale_jumble_text(2)+170;
-    
-    % shifting all the way to the bottom till the puzzle limit
-    row_end = scale_jumble_text(4)+800;
-    
-    % creating the puzzle by cropping from the original image.
-    im_puzzle = imcrop(im_double, [column_start row_start ...
-                                     column_end row_end]);
+    % cropping the puzzle from the original image.
+    im_puzzle = imcrop(im_display, text_location);
 
     imshow(im_puzzle);
     
     % binarinzing the image
-    im_bw_puzzle = imbinarize(im_puzzle, 0.55);
+    im_bw_puzzle = imbinarize(im_puzzle, 0.6);
 
     % removing the small letters by coloring small gaps in them black. This
     % is to avoid them showing up in the OCR.
-    im_clean_puzzle = bwareaopen(im_bw_puzzle, 60);
-    
-    % Remove the entire section rows with the circles and squares. That
-    % way, the program would only need to identify the text and nothing but
-    % the text.
-    
+    im_clean_puzzle = bwareaopen(im_bw_puzzle, 40);
     
     % Runs the OCR of the formatted puzzle now. 
-    puzzle_text = getOcr(im_clean_puzzle, im_puzzle);
-    
+    [words, boxes] = getOcr(im_clean_puzzle);
+    im_cropped_puzzle = im_puzzle;
     
 end
 
+
+function max_text = greatest_jumble(text_location)
+    % takes the first row and assumes that it is the biggest one of all
+    max_text = [];
+    
+    % returns the biggest jumble word available. Ideally, it should return
+    % the heading Jumble.
+    [row, column] = size(text_location);
+    for jumble_word_row = 1:row
+        if(isempty(max_text))
+            max_text = text_location(jumble_word_row,:);
+        elseif max_text(3) < text_location(jumble_word_row,3)
+            max_text = text_location(jumble_word_row,:);
+        end
+    end
+end
+
+
 function word_rectangles = getWordRectangles(im)
     % gets all the 'rectangles' in the image along with their perimeters and
-    % areas. These will be sued as differentiating purposes from areas of
+    % areas. These will be used as differentiating purposes from areas of
     % other unwanted rectangles.
     rectangles = regionprops(im,'boundingbox', 'Perimeter', 'Area','Orientation', 'MajorAxisLength', 'MinorAxisLength');
     roi = [];
@@ -101,7 +119,8 @@ function word_rectangles = getWordRectangles(im)
     word_rectangles = curated_roi;
 end
 
-function [words, boxes] = getOcr(im, im_original)
+
+function [words, boxes] = getOcr(im)
     % get the word rectangles
     roi = getWordRectangles(im); 
     % show the word rectangles found
@@ -114,7 +133,7 @@ function [words, boxes] = getOcr(im, im_original)
     % initialize the words array
     words = [];
     % delta offset array to remove outlines
-    delta = [5 5 -10 -10]
+    delta = [5 5 -10 -10];
     % this gets the word for each word rectangle
     for index = 1:numel(boxes(:,1))
         % get the location of word rectangle and use delta to remove edges
@@ -124,7 +143,7 @@ function [words, boxes] = getOcr(im, im_original)
         % perform ocr on the cropped image
         results = ocr(Icropped,'TextLayout','Block', 'CharacterSet', 'A':'Z');
         % turn the char array to a string
-        text = convertCharsToStrings(deblank(results.Text))
+        text = convertCharsToStrings(deblank(results.Text));
         % if it cant find anything put a questionmark
         if numel(text) == 0
             text = '?';
@@ -132,11 +151,7 @@ function [words, boxes] = getOcr(im, im_original)
         % add new words to the word array
         words = [words ; text];
     end
-    % label the words found
-    Iname = insertObjectAnnotation(im_original,'rectangle',boxes,words);
-    imshow(Iname);
 end
-
 
 
 function straight = straighten(im_gray)

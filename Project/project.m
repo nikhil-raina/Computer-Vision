@@ -1,22 +1,27 @@
 function project(file_name)
-    %im = imread(file_name);
-    im = imread('PROJ_IMAGES/SCAN0124.jpg');
-    im = orientimage(im);
-    imshow(im);
-    ocr = getOcr(im);
-    im_gray = rgb2gray(im);
     SE_circle = strel('disk', 2, 4);
 
+    %im = imread(file_name);
+    im = imread('PROJ_IMAGES/SCAN0123.jpg');
+    
+    % 1: word list
+    % 2: boxes list
+    % 3: cropped puzzle image in gray
+    [word_list, box_list, im_puzzle] = preprocess(im);
+    
+    Iname = insertObjectAnnotation(im_puzzle,'rectangle', box_list, word_list);
+    imshow(Iname);
+    
     %filter to smooth the image
-    fltr = fspecial('gauss', [15 15], 1.4);
-    im = imfilter(im_gray, fltr, 'same', 'repl');
-    imshow(im)
-    pause(2)
+    %fltr = fspecial('gauss', [15 15], 1.4);
+    %im = imfilter(im_puzzle, fltr, 'same', 'repl');
+    %figure;
+    %imshow(im)
 
     % binarizing the image by making the threshold at 0.6
     % this means that all the double values of the cells that are below 0.6
     % will be 0 or blacks and the noes above it will be 1 or white.
-    bw = imbinarize(im,.6);
+    bw = imbinarize(im_puzzle,.6);
     
     % Removes all the white blob areas that are less than 1000. This is to
     % clear the image more so that only the Jumble Puzzle is visible. This
@@ -45,8 +50,8 @@ function project(file_name)
     %im_ed = edge( lines );
 
     % finds the circles from the image.
-    [centers, radii] = imfindcircles( lines, [30, 40], 'ObjectPolarity', 'dark');
-    imshow(bw)
+    [centers, radii] = imfindcircles( lines, [30 40], 'ObjectPolarity', 'dark');
+    imshow(im_puzzle)
     hold on;
 
     % prints the outlines of the circles on the image
@@ -172,70 +177,3 @@ function cropped_image = cropImage(im, roi)
     % crop image to just the area of interest
     cropped_image = imcrop(im, [minx-100 miny-100 maxx-minx+400 maxy-miny+400]);
 end 
-
-% pre processes the image
-function preprocess_im = preprocess(im)
-    im_gray = rgb2gray(im2double( im ));
-
-    %filter to smooth the image
-    fltr = fspecial('gauss', [15 15], 1.4);
-    im = imfilter(im_gray, fltr, 'same', 'repl');
-    figure;
-    imshow(im)
-    pause(2)
-
-    % binarizing the image by making the threshold at 0.6
-    % this means that all the double values of the cells that are below 0.6
-    % will be 0 or blacks and the noes above it will be 1 or white.
-    bw = imbinarize(im,.6);
-
-    % Removes all the white blob areas that are less than 1000. This is to
-    % clear the image more so that only the Jumble Puzzle is visible. This
-    % way, some random structures dont become shapes, when thats not
-    % required
-    %cleaned_image = bwareaopen(bw, 1000);
-    marker = imerode(im, strel('line',10,0));
-    clean = imreconstruct(marker, im);
-
-    bw2 = imbinarize(clean);
-    preprocess_im = bw;
-end
-% doesnt work correctly, but finds some text
-function ocrResults = getOcr(im)
-    % prerocess the image
-    bw = preprocess(im);
-    imshow(bw);
-    hold on;
-    % get the word rectangles
-    roi = getWordRectangles(im);    
-     for index = 1 : numel(roi)
-       bb = roi(index).BoundingBox;
-       rectangle('position',bb,'edgecolor','g','linewidth',1);
-     end
-     % get the boudning boxes
-    boxes = vertcat(roi(:).BoundingBox);
-    
-    % perform ocr on the preprocessed image using the found bounding boxes
-    results = ocr(bw, boxes, 'TextLayout', 'Word', 'CharacterSet', 'A':'Z');
-    figure;
-    % remove whitespace in the results
-    c = cell(1,numel(results));
-    for i = 1:numel(results)
-        c{i} = deblank(results(i).Text);
-    end
-    ocrResults = c;
-    % display results on the iamge
-    Iname = insertObjectAnnotation(im,'rectangle',boxes,c);
-    imshow(Iname);
-end
-
-% returns false if any of the arrays in the array are empty
-function anyEmpty = anyEmpty(arr)
-    for index = 1 : numel(arr) 
-        if size(arr(index)) == 0
-            anyEmpty = true;
-            return
-        end
-    end
-    anyEmpty = false;
-end
