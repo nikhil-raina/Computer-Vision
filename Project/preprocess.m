@@ -1,5 +1,5 @@
-function [words, boxes, im_cropped_puzzle] = preprocess(im)
-    %im = imread('PROJ_IMAGES/SCAN0128.jpg');
+function [words, boxes, im_cropped_puzzle, empty_boxes] = preprocess(im)
+    %im = imread('PROJ_IMAGES/SCAN0123.jpg');
     im_gray = rgb2gray(im);
     disp('Straightening the image');
     im_straight = straighten(im_gray);
@@ -66,10 +66,10 @@ function [words, boxes, im_cropped_puzzle] = preprocess(im)
     disp('Cropping out the puzzle');
     im_puzzle = imcrop(im_display, text_location);
 
-    imshow(im_puzzle);
+    %imshow(im_puzzle);
     
     % binarinzing the image
-    im_bw_puzzle = imbinarize(im_puzzle, 0.6);
+    im_bw_puzzle = imbinarize(im_puzzle, 0.7);
 
     % removing the small letters by coloring small gaps in them black. This
     % is to avoid them showing up in the OCR.
@@ -77,7 +77,7 @@ function [words, boxes, im_cropped_puzzle] = preprocess(im)
     
     disp('Finding the jumbled words');
     % Runs the OCR of the formatted puzzle now. 
-    [words, boxes] = getOcr(im_clean_puzzle);
+    [words, boxes, empty_boxes] = getOcr(im_clean_puzzle);
     im_cropped_puzzle = im_puzzle;
     
 end
@@ -100,15 +100,22 @@ function max_text = greatest_jumble(text_location)
 end
 
 
-function word_rectangles = getWordRectangles(im)
+function [word_rectangles, empty_blocks] = getWordRectangles(im)
     % gets all the 'rectangles' in the image along with their perimeters and
     % areas. These will be used as differentiating purposes from areas of
     % other unwanted rectangles.
     rectangles = regionprops(im,'boundingbox', 'Perimeter', 'Area','Orientation', 'MajorAxisLength', 'MinorAxisLength');
     roi = [];
+    small_roi = [];
     for index = 1 : numel(rectangles)
-        if rectangles(index).MajorAxisLength > 1.5 * rectangles(index).MinorAxisLength && rectangles(index).Area > 4500 && rectangles(index).Area < 27000
+        % gets the small squares where the de-jumbled word will go into
+        if rectangles(index).Area > 1680 && rectangles(index).Area < 2650
+            small_roi = [small_roi; rectangles(index)];
+            %rectangle('position',rectangles(index).BoundingBox,'edgecolor','g','linewidth',2);
+        % gets the rectangle boxes that contain the jumbled words
+        elseif rectangles(index).MajorAxisLength > 1.5 * rectangles(index).MinorAxisLength && rectangles(index).Area > 4500 && rectangles(index).Area < 27000
             roi = [roi ; rectangles(index)];
+            %rectangle('position',rectangles(index).BoundingBox,'edgecolor','b','linewidth',2);
         end
     end
     curated_roi = [];
@@ -123,19 +130,21 @@ function word_rectangles = getWordRectangles(im)
     end
 
     word_rectangles = curated_roi;
+    empty_blocks = small_roi;
 end
 
 
-function [words, boxes] = getOcr(im)
+function [words, boxes, empty_boxes] = getOcr(im)
     % get the word rectangles
-    roi = getWordRectangles(im); 
+    [roi, empty_boxes] = getWordRectangles(im); 
     % show the word rectangles found
      for index = 1 : numel(roi)
        bb = roi(index).BoundingBox;
-       rectangle('position',bb,'edgecolor','g','linewidth',1);
+       rectangle('position',bb,'edgecolor','g','linewidth',2);
      end
      % get the bounding boxes of the word rectangles
     boxes = vertcat(roi(:).BoundingBox);
+    empty_boxes = vertcat(empty_boxes(:).BoundingBox);
     % initialize the words array
     words = [];
     % delta offset array to remove outlines
@@ -150,6 +159,8 @@ function [words, boxes] = getOcr(im)
         results = ocr(Icropped,'TextLayout','Block', 'CharacterSet', 'A':'Z');
         % turn the char array to a string
         text = convertCharsToStrings(deblank(results.Text));
+        % removes spaces if there are any
+        text = regexprep(text, '\s+', '');
         % if it cant find anything put a questionmark
         if numel(text) == 0
             text = '?';
