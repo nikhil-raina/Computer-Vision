@@ -3,7 +3,7 @@
 function dejumbled_word_list = dejumble(word_list)
     global dictionary;
     disp('Dejumbling words:');
-    word_list = ["asdasd"; "asfasf"];
+    %word_list = ["asdasd"; "asfasf"];
     dictionary = create_dictionary();
     
     % initialises space for the string array that will contain the
