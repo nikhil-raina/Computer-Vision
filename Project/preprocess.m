@@ -1,5 +1,5 @@
 function [words, boxes, im_cropped_puzzle, empty_boxes] = preprocess(im)
-    %im = imread('PROJ_IMAGES/SCAN0123.jpg');
+    im = imread('PROJ_IMAGES/SCAN0126.jpg');
     im_gray = rgb2gray(im);
     disp('Straightening the image');
     im_straight = straighten(im_gray);
@@ -80,9 +80,9 @@ function [words, boxes, im_cropped_puzzle, empty_boxes] = preprocess(im)
     
     disp('Finding the jumbled words');
     % Runs the OCR of the formatted puzzle now. 
-    [words, boxes, empty_boxes] = getOcr(im_clean_puzzle);
+    [words, boxes, empty_boxes] = getOcr(im_clean_puzzle, im_puzzle);
     fprintf('Found %d jumbled words\n\n', length(words));
-    
+    empty_boxes = remove_extra_blocks(empty_boxes);
     im_cropped_puzzle = im_puzzle;
     
 end
@@ -108,7 +108,7 @@ function [word_rectangles, empty_blocks] = getWordRectangles(im)
     end
     curated_roi = [];
     x_value = roi(1).BoundingBox(1);    % this is the x value in which all word rectangles should start at
-    delta = 5;  % amt of pixels the starting word rectangles can be off by
+    delta = 7;  % amt of pixels the starting word rectangles can be off by
     % this finds all the actual word rectangles on the page, they should
     % all be stacked near eachother in the same column
     for index = 1 : numel(roi)
@@ -119,10 +119,26 @@ function [word_rectangles, empty_blocks] = getWordRectangles(im)
 
     word_rectangles = curated_roi;
     empty_blocks = small_roi;
+    
+    
 end
 
 
-function [words, boxes, empty_boxes] = getOcr(im)
+function new_empty_blocks = remove_extra_blocks(empty_blocks)
+    % maximum deviation of a box from its group
+    delta = 4;
+    col_value = empty_blocks(1,3);
+    new_empty_blocks = [];
+    for index = 1 : length(empty_blocks)
+        if col_value - delta <= empty_blocks(index,3) && empty_blocks(index, 3) <= col_value + delta 
+            new_empty_blocks = [new_empty_blocks; empty_blocks(index,:)];
+        end
+    end
+end
+
+
+function [words, boxes, empty_boxes] = getOcr(im, im_one)
+    SE_diamond = strel('diamond', 1);
     % get the word rectangles
     [roi, empty_boxes] = getWordRectangles(im); 
     % show the word rectangles found
@@ -149,11 +165,15 @@ function [words, boxes, empty_boxes] = getOcr(im)
         % get the location of word rectangle and use delta to remove edges
         bbox = boxes(index, :) + delta;
         % crop image to the word rectangle
-        Icropped = imcrop(im,bbox);
+        Icropped = imcrop(im_one, bbox);
+        % binarizing the cropped image
+        Icropped_bw = imbinarize(Icropped, 0.6);
+        % darkens the text
+        Icropped_darken = imerode(Icropped_bw, SE_diamond);
         % perform ocr on the cropped image
-        results = ocr(Icropped,'TextLayout','Block', 'CharacterSet', 'A':'Z');
+        results = ocr(Icropped_darken,'TextLayout','Block', 'CharacterSet', 'A':'Z');
         % turn the char array to a string
-        text = convertCharsToStrings(deblank(results.Words(1)));
+        text = convertCharsToStrings(deblank(results.Text));
         % removes spaces if there are any
         text = regexprep(text, '\s+', '');
         % if it cant find anything put a questionmark
