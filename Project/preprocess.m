@@ -1,4 +1,4 @@
-function [words, boxes, im_cropped_puzzle, empty_boxes] = preprocess(im)
+function [words, boxes, im_cropped_puzzle, empty_blocks, centers, radii] = preprocess(im)
     im = imread('PROJ_IMAGES/SCAN0126.jpg');
     im_gray = rgb2gray(im);
     disp('Straightening the image');
@@ -15,6 +15,7 @@ function [words, boxes, im_cropped_puzzle, empty_boxes] = preprocess(im)
     for degree = 0:90:360
         im_display = imrotate(im_straight_resize, degree);
         im_rotate = imrotate(im_clean, degree);
+        % identifies all the text from the image
         all_text = ocr(im_rotate);
         text_location = locateText(all_text, 'SCRAMBLED');
         if(~isempty(text_location))
@@ -60,16 +61,13 @@ function [words, boxes, im_cropped_puzzle, empty_boxes] = preprocess(im)
         end
     end
     
-    %Iocr = insertShape(im_display, 'FilledRectangle', text_location);
-    %figure; imshow(Iocr);
-    
+    % adds necessary adjustment to the cooordinates of the puzzle location
+    % thereby getting the entire puzzle
     text_location = text_location + puzzle_adjustment;
     
     % cropping the puzzle from the original image.
     disp('Cropping out the puzzle');
     im_puzzle = imcrop(im_display, text_location);
-
-    %imshow(im_puzzle);
     
     % binarinzing the image
     im_bw_puzzle = imbinarize(im_puzzle, 0.7);
@@ -80,9 +78,19 @@ function [words, boxes, im_cropped_puzzle, empty_boxes] = preprocess(im)
     
     disp('Finding the jumbled words');
     % Runs the OCR of the formatted puzzle now. 
-    [words, boxes, empty_boxes] = getOcr(im_clean_puzzle, im_puzzle);
+    [words, boxes, empty_boxes, centers, radii] = getOcr(im_clean_puzzle, im_puzzle);
     fprintf('Found %d jumbled words\n\n', length(words));
+    empty_blocks = [];
     empty_boxes = remove_extra_blocks(empty_boxes);
+    
+    % final sorting to ensure that the letters are arraganged correctly for
+    % each set of the jumble words
+    for fix_sorting = 1:6:35
+        temp = empty_boxes(fix_sorting:fix_sorting+5, :);
+        temp = sortrows(temp, 1);
+        empty_blocks = [empty_blocks; temp];
+    end
+    
     im_cropped_puzzle = im_puzzle;
     
 end
@@ -119,11 +127,10 @@ function [word_rectangles, empty_blocks] = getWordRectangles(im)
 
     word_rectangles = curated_roi;
     empty_blocks = small_roi;
-    
-    
 end
 
 
+% method to remove any extra block found form the image
 function new_empty_blocks = remove_extra_blocks(empty_blocks)
     % maximum deviation of a box from its group
     delta = 4;
@@ -137,10 +144,26 @@ function new_empty_blocks = remove_extra_blocks(empty_blocks)
 end
 
 
-function [words, boxes, empty_boxes] = getOcr(im, im_one)
+function [centers, radii] = get_cirlces(im_one)
+    SE_circle = strel('disk', 2, 4);
+    % binarises the image to make the cicles clear
+    bw = imbinarize(im_one,.6);
+    % darkens the circles making it easier for the software to identify
+    % them
+    bright_circle = imerode(bw, SE_circle);
+    % picks out the most bright circles of all, which are the correct
+    % circles needed.
+    lines = bright_circle < 1;
+    % specifies the area under which the required circles should exist
+    [centers, radii] = imfindcircles( lines, [20 30], 'ObjectPolarity', 'dark');    
+end
+
+
+function [words, boxes, empty_boxes, centers, radii] = getOcr(im, im_one)
     SE_diamond = strel('diamond', 1);
     % get the word rectangles
-    [roi, empty_boxes] = getWordRectangles(im); 
+    [roi, empty_boxes] = getWordRectangles(im);
+    [centers, radii] = get_cirlces(im_one);
     % show the word rectangles found
      for index = 1 : numel(roi)
        bb = roi(index).BoundingBox;
