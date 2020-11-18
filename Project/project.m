@@ -10,6 +10,7 @@ function project(file_name)
     % 5: centers of the circles
     % 6: the radii of the circles
     [word_list, box_list, im_puzzle, empty_boxes, centers, radii] = preprocess(im);
+    dejumble_words = dejumble(word_list);
     %dejumble_words = ["gerbil"; "driver"; "digest"; "afloat"; "hungry"; "unload"];
     
     letter_sequence = string(cell(0,0));
