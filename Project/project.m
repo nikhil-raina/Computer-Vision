@@ -15,10 +15,13 @@ function project(file_name)
     
     letter_sequence = string(cell(0,0));
     coordinates = [];
+    
+    % concats all the x and y coordinates to display the text
     for empty_box_limit = 1:length(empty_boxes)
         coordinates = [coordinates; empty_boxes(empty_box_limit, [1 2]) + [0 -10]];
     end
     
+    % add all the characters in a list to be displayed
     for dejumble_index = 1:length(dejumble_words)
         dejumble_word = char(dejumble_words(dejumble_index));
         for character_count = 1: length(char(dejumble_words(dejumble_index)))
