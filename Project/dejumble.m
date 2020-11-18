@@ -3,7 +3,7 @@
 function dejumbled_word_list = dejumble(word_list)
     global dictionary;
     disp('Dejumbling words:');
-    %word_list = ["yabb"; "ijdnAab"];
+    word_list = ["asdasd"; "asfasf"];
     dictionary = create_dictionary();
     
     % initialises space for the string array that will contain the
@@ -15,10 +15,17 @@ function dejumbled_word_list = dejumble(word_list)
         result = dejumbled_result('',lower(word_list(jumble_word_index)));
         if(isempty(result))
             fprintf('\t\tFAIL\n');
+            % adds a string of '?' to illustrate that there wasnt any
+            % de-jumbled word found for the current jumbled string.
+            result = "???";
+            for space_counter = 4:length(char(word_list(jumble_word_index)))
+               result = strcat(result, "?"); 
+            end
+            dejumbled_word_list(end+1,1) = result;
         else
             fprintf('\t\tSUCCESS\n');
+            dejumbled_word_list(end+1,1) = result;
         end
-        dejumbled_word_list(end+1,1) = result;
     end
 end
 
