@@ -1,5 +1,5 @@
 function [words, boxes, im_cropped_puzzle, empty_blocks, centers, radii] = preprocess(im)
-    im = imread('PROJ_IMAGES/SCAN0126.jpg');
+    %im = imread('PROJ_IMAGES/SCAN0126.jpg');
     im_gray = rgb2gray(im);
     disp('Straightening the image');
     im_straight = straighten(im_gray);

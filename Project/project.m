@@ -1,6 +1,6 @@
 function project(file_name)
-    %im = imread(file_name);
-    im = imread('PROJ_IMAGES/SCAN0124.jpg');
+    im = imread(file_name);
+    %im = imread('PROJ_IMAGES/SCAN0124.jpg');
     BOX_LIMIT = 60;
     
     % 1: word list
