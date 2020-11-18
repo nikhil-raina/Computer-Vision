@@ -88,23 +88,6 @@ function [words, boxes, im_cropped_puzzle, empty_boxes] = preprocess(im)
 end
 
 
-function max_text = greatest_jumble(text_location)
-    % takes the first row and assumes that it is the biggest one of all
-    max_text = [];
-    
-    % returns the biggest jumble word available. Ideally, it should return
-    % the heading Jumble.
-    [row, column] = size(text_location);
-    for jumble_word_row = 1:row
-        if(isempty(max_text))
-            max_text = text_location(jumble_word_row,:);
-        elseif max_text(3) < text_location(jumble_word_row,3)
-            max_text = text_location(jumble_word_row,:);
-        end
-    end
-end
-
-
 function [word_rectangles, empty_blocks] = getWordRectangles(im)
     % gets all the 'rectangles' in the image along with their perimeters and
     % areas. These will be used as differentiating purposes from areas of
@@ -170,7 +153,7 @@ function [words, boxes, empty_boxes] = getOcr(im)
         % perform ocr on the cropped image
         results = ocr(Icropped,'TextLayout','Block', 'CharacterSet', 'A':'Z');
         % turn the char array to a string
-        text = convertCharsToStrings(deblank(results.Text));
+        text = convertCharsToStrings(deblank(results.Words(1)));
         % removes spaces if there are any
         text = regexprep(text, '\s+', '');
         % if it cant find anything put a questionmark
