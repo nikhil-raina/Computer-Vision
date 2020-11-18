@@ -1,6 +1,7 @@
 function project(file_name)
-    %im = imread(file_name);
-    im = imread('PROJ_IMAGES/SCAN0123.jpg');
+    im = imread(file_name);
+    %im = imread('PROJ_IMAGES/SCAN0125.jpg');
+    BOX_LIMIT = 60;
     
     % 1: word list
     % 2: boxes list
@@ -8,23 +9,20 @@ function project(file_name)
     % 4: empty boxes where the de-jumbled word shall go in.
     [word_list, box_list, im_puzzle, empty_boxes] = preprocess(im);
     dejumble_words = dejumble(word_list);
-    %dejumble_words = ["gerbil"; "driver"; "digest"; "afloat"; "hungry"; "unload"];
+    %dejumble_words = ["gerbil"; "??????"; "digest"; "afloat"; "hungry"; "unload"];
     %Iname = insertObjectAnnotation(im_puzzle,'rectangle', box_list, dejumble_words);
     %imshow(Iname);
     
-    word_limit = length(dejumble_words);
-    character_index = 1;
-    word_count = 1;
     letter_sequence = string(cell(0,0));
     coordinates = [];
     for empty_box_limit = 1:length(empty_boxes)
         coordinates = [coordinates; empty_boxes(empty_box_limit, [1 2]) + [0 -10]];
-        word = char(dejumble_words(word_count));
-        letter_sequence(end+1,1) = upper(word(character_index));
-        word_count = word_count + 1;
-        if word_count > word_limit
-            character_index = character_index + 1;
-            word_count = 1;
+    end
+    
+    for dejumble_index = 1:length(dejumble_words)
+        dejumble_word = char(dejumble_words(dejumble_index));
+        for character_count = 1: length(char(dejumble_words(dejumble_index)))
+            letter_sequence(end+1, 1) = upper(dejumble_word(character_count));
         end
     end
     
@@ -33,6 +31,4 @@ function project(file_name)
     %set( gcf(), 'Position',  [ 155, -300, 1400, 900 ] );
     imshow(de_jumbled_display);
     title('\fontsize{20}De-Jumbled Puzzle');
-    
-    close all;
 end
