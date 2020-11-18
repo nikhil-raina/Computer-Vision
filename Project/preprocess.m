@@ -29,26 +29,29 @@ function [words, boxes, im_cropped_puzzle, empty_boxes] = preprocess(im)
                 puzzle_adjustment = [-700 0 +350 +800];
                 break;
             else 
-                % this is specifically being done for jumble as the OCR is
-                % not able to read the actual jumble heading and instead
-                % finds the other jumbles. This can cause some level of
-                % incoherence with the algorithm. Thus the image is being
-                % reduced more for it to see the correct jumble word
-                im_smaller_rotate = imresize(im_rotate, 0.3);
-                all_text = ocr(im_smaller_rotate);
                 text_location = locateText(all_text, 'Jumble');
+                
                 if(~isempty(text_location))
                     [row_number, c] = size(text_location);
                     if(row_number > 1)
-                        text_location = greatest_jumble(text_location); 
+                        % this is specifically being done for jumble as the OCR is
+                        % not able to read the actual jumble heading and instead
+                        % finds the other jumbles. This can cause some level of
+                        % incoherence with the algorithm. Thus the image is being
+                        % reduced more for it to see the correct jumble word
+                        im_smaller_rotate = imresize(im_rotate, 0.3);
+                        all_text = ocr(im_smaller_rotate);
+                        text_location = locateText(all_text, 'Jumble');
+                        if(~isempty(text_location))
+                            % scaling back the text to the original 0.75 resized
+                            % version by just simply revering the previous
+                            % resizing. 
+                            % additional addition of numbers has been done to
+                            % reduce the error of scaling from small to big.
+                            text_location = (text_location + [-2 0 3 0])/0.3;
+                        end
                     end
                     
-                    % scaling back the text to the original 0.75 resized
-                    % version by just simply revering the previous
-                    % resizing. 
-                    % additional addition of numbers has been done to
-                    % reduce the error of scaling from small to big.
-                    text_location = (text_location + [-2 0 3 0])/0.3;
                     disp('Found Jumble identifier');
                     puzzle_adjustment = [-20 0 170 800];
                     break;
@@ -78,6 +81,8 @@ function [words, boxes, im_cropped_puzzle, empty_boxes] = preprocess(im)
     disp('Finding the jumbled words');
     % Runs the OCR of the formatted puzzle now. 
     [words, boxes, empty_boxes] = getOcr(im_clean_puzzle);
+    fprintf('Found %d jumbled words\n\n', length(words));
+    
     im_cropped_puzzle = im_puzzle;
     
 end
@@ -144,7 +149,14 @@ function [words, boxes, empty_boxes] = getOcr(im)
      end
      % get the bounding boxes of the word rectangles
     boxes = vertcat(roi(:).BoundingBox);
+    
+    % arranges the word boxes from top to bottom according to the puzzle 
+    boxes = sortrows(boxes, 2);
     empty_boxes = vertcat(empty_boxes(:).BoundingBox);
+    
+    % arramges the jumble empty boxes so that the text can easily be able
+    % to arrange itself while printing it out.
+    empty_boxes = sortrows(empty_boxes, 2);
     % initialize the words array
     words = [];
     % delta offset array to remove outlines
