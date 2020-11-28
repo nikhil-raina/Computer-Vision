@@ -78,7 +78,7 @@ function [words, boxes, im_cropped_puzzle, empty_blocks, centers, radii] = prepr
     
     disp('Finding the jumbled words');
     % Runs the OCR of the formatted puzzle now. 
-    [words, boxes, empty_boxes, centers, radii] = getOcr(im_clean_puzzle, im_puzzle);
+    [words, boxes, empty_boxes, centers, radii] = getOcr(im_bw_puzzle, im_puzzle);
     fprintf('Found %d jumbled words\n\n', length(words));
     empty_blocks = [];
     empty_boxes = remove_extra_blocks(empty_boxes);
